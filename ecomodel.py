@@ -60,6 +60,12 @@ class Ecomodel:
     A processing pipeline extracts the information from raw lidar data of trees. 
     """
     def __init__(self, results_folder = "results"):
+        """
+        Init function for Ecomodel Class. 
+
+        Args: 
+            results_folder: path where results and intermediate point cloud outputs will be stored.
+        """
         self.device = 'mps' if torch.backends.mps.is_available() else ('cuda' if torch.cuda.is_available() else 'cpu')
         self._raw_tiles = []
         self.min_x = float('inf')
@@ -75,7 +81,9 @@ class Ecomodel:
 
 
     def add_tile(self, tile):
-        
+        """
+        Adds a tile to the 
+        """
         self.min_x = min(self.min_x, tile.min_x)
         self.min_y = min(self.min_y, tile.min_y)
         self.min_z = min(self.min_z, tile.min_z)
@@ -86,11 +94,15 @@ class Ecomodel:
 
     def normalize_raw_tiles(self):
         """
-        Normalize the point cloud to ensure numerical stability.
+        Normalizes the data for numerical efficiency. 
+        
+        This function normalizes the point cloud in the X and Y directions by subtracting the mean 
+        and in the Z direction by subtracting the ground level to be 0. 
+        
         Parameters: 
                 None
         Returns:        
-                numpy.ndarray: Normalized point cloud, shape (n_points, 3).
+                None
         """
         means = np.zeros(3)
         N =0
@@ -109,6 +121,9 @@ class Ecomodel:
             tile.point_data[:, 0:3] = tile.cloud
         
     def reset_terrain(self):
+        """
+        Resets each tiles point cloud Z height to the original height.  
+        """
         for tile in self.tiles.flatten():
             if tile.terrain_model is not None:
                 tile.cloud = tile.original_data[:,0:3] - self.mean
@@ -117,6 +132,9 @@ class Ecomodel:
             # tile.cloud = Utils.add_terrain(tile.cloud,tile.terrain_model)
 
     def filter_ground(self,tile_list, band_size = 0.1, threshold = 20,offset = 0.2,remove_under_ground = True, write_cloth=False): 
+        """
+        Uses the Cloth simulation filter to remove the ground from tiles. 
+        """
         csf = CSF.CSF()
         new_min_z = float('inf')
         for tile in tile_list:
@@ -174,12 +192,13 @@ class Ecomodel:
             new_min_z = min(new_min_z, tile.cloud[:, 2].min())
         self.min_z = new_min_z
 
-    # Keeping for now, but overwriting with CSF
-    # 
     def filter_below_ground(self,tile_list, band_size = 0.1, threshold = 100,offset = 0.2):
-
         """
-        Filter out ground points from the point cloud P.
+        Filer out ground points from the point cloud P.
+
+        Note: 
+            Keeping for now, but overwriting with CSF
+
         Parameters: 
                 band_size (float): Size of the bands to find ground.
                 threshold (float): number of points per square xy unit.
@@ -255,7 +274,8 @@ class Ecomodel:
 
     def segment_trees(self, intensity_threshold= 0, save_clusters=False):
         """
-        Segments the point cloud into groups from a single tree
+        For each tile, segment each tree and give them a unique label. 
+
         Parameters: 
                 min_points (int): Minimum number of points in a cluster.
         Returns:
@@ -339,7 +359,6 @@ class Ecomodel:
         Returns:        
                 numpy.ndarray: Segmented point cloud, shape (n_points, 3).
         """
-        
         max_segment = 0
         for i,tile in enumerate(self.tiles.flatten(), start = 1):
             if tile == 0:
@@ -566,13 +585,16 @@ class Ecomodel:
                 # print("Writing File")
                 # print("Writing File")
             # tile.to_xyz(f"clustered_{i}.xyz", True)
+
+
     def classify_wood_leaf_on_array(self,tree_cloud, input_params=None):
             """
-            Run classify_wood_leaf() directly on an in-memory NumPy point cloud array.
-            Saves the temporary segment, classifies it, and rebuilds boolean masks.
-            """
-            
+            Classify the wood/leaf components of a point cloud using SegmentRGI
 
+            Note: 
+                Run classify_wood_leaf() directly on an in-memory NumPy point cloud array.
+                Saves the temporary segment, classifies it, and rebuilds boolean masks.
+            """
             with TemporaryDirectory() as tmpdir:
                 tmp_ply = Path(tmpdir) / "segment.ply"
                 tmp_results = Path(tmpdir) / "results"
@@ -620,12 +642,13 @@ class Ecomodel:
                 leaf_mask = build_mask(leaf_coords)
 
                 return wood_mask, leaf_mask
+            
+        
     def get_qsm_segments_rgi(self, intensity_threshold=40000,save_leaf_removal_output=False):
         """
         Same as get_qsm_segments(), but integrates classify_wood_leaf() from SegmentRGI for
         leaf/wood separation before QSM processing.
         """
-
         max_segment = 0
         
         for i, tile in enumerate(self.tiles.flatten()):
@@ -911,6 +934,8 @@ class Ecomodel:
 
     def adjust_location(self):
         """
+        Currently not used.
+
         Adjust the location of the point cloud P.
         Parameters: 
                 None
@@ -936,6 +961,8 @@ class Ecomodel:
 
     def get_voxel(self,min_x,min_y,min_z,voxel_size=1,fidelity =.3):
         """
+        Currently not used. 
+
         Get the data from the point cloud P.
         Parameters: 
                 min_x (float): Minimum x coordinate of the point cloud.
@@ -1019,6 +1046,8 @@ class Ecomodel:
 
     def calc_volumes(self,tile, segments,min_bound,max_bound):
         """
+        Currently not used.
+
         Get cylinder information
         """
         print("Calculating volumes")
@@ -1270,6 +1299,9 @@ class Ecomodel:
         return ecomodel
 
     def remove_duplicate_points(self):
+        """
+        Removes duplicate points from all tiles. 
+        """
         for i, tile in enumerate(self.tiles.flatten(), start=1):
             if tile == 0 or tile is None:
                 print(f"[remove_duplicate_points] Skipping tile {i}: empty (0 or None).")
@@ -1284,6 +1316,8 @@ class Ecomodel:
 
     def denoise(self,grid_size = .1, min_points = 10, resolution =.05):
         """
+        Currently not used.
+
         Denoise the point cloud by subdividing into a X x Y tiles and creating a voronoi partition using cover_sets()
           with a patch diameter of resolution and atleast min_points in each patch.
 
@@ -1433,6 +1467,14 @@ class Tile:
     """
 
     def __init__(self, cloud, point_data = None,contains_ground = False):
+        """
+        Init function for Tile class
+
+        Args: 
+            cloud (Nx3 matrix): point cloud representing x, y, z points of tile
+            point_data (NxD matrix): point data as well as location (intensity, labels etc)
+            contains_ground (bool): Boolean if the tile current contains ground points
+        """
         self.cluster_labels = np.zeros(len(cloud))
         self.device = 'mps' if torch.backends.mps.is_available() else ('cuda' if torch.cuda.is_available() else 'cpu')
         self.cloud = cloud# torch.from_numpy(cloud.astype('float32')).to(self.device)
@@ -1469,6 +1511,9 @@ class Tile:
         self.branch_orders = np.array([])
         
     def remove_duplicate_points(self):
+        """
+        Removes the exact duplicate points in a cloud. 
+        """
         cloud, mask = np.unique(self.cloud,return_index = True, axis=0,)
         self.point_data = self.point_data[mask]
         self.cloud = self.point_data[:,:3]
@@ -1479,10 +1524,16 @@ class Tile:
 
     
     def reset_cylinders(self):
+        """
+        Clears the cylindar variable information.
+        """ 
         self.cylinder_starts = np.empty((0,3))
         self.cylinder_radii = np.array([])
         self.cylinder_axes = np.empty((0,3))
         self.cylinder_lengths = np.array([])
+
+
+
     def to_xyz(self, file_path, with_clusters = False, with_intensity = False):
         """
         Save the point cloud to a XYZ file.
@@ -1525,8 +1576,8 @@ class Tile:
         """
         Convert point cloud to a numpy array.
         Parameters: 
-                None
-                """
+            None
+        """
         if type(self.cluster_labels) == np.ndarray:
             return self.cluster_labels
         elif type(self.cluster_labels) == torch.Tensor:
@@ -1536,8 +1587,8 @@ class Tile:
         """
         Convert point cloud to a numpy array.
         Parameters: 
-                None
-                """
+            None
+        """
         if type(self.segment_labels) == np.ndarray:
             return self.segment_labels
         elif type(self.segment_labels) == torch.Tensor:
@@ -1546,8 +1597,8 @@ class Tile:
         """
         Convert point cloud to a numpy array.
         Parameters: 
-                None
-                """
+            None
+        """
         if type(self.cloud) == np.ndarray:
             return self.cloud
         elif type(self.cloud) == torch.Tensor:
@@ -1556,11 +1607,11 @@ class Tile:
     
     def plot(self):
         """
-        Plot the point cloud.
+        Plot the point cloud using matplotlib. 
         Parameters: 
-                None
+            None
         Returns:        
-                None
+            None
         """
         if type(self.cloud) == np.ndarray:
             fig = plt.figure(figsize=(10,10))
@@ -1590,6 +1641,12 @@ class Tile:
             return np.column_stack([self.cloud,self.point_data[:, 3] / 65535.0*factor])
 
     def to(self, device):
+        """
+        Casts tensor data to self.device.
+
+        Note: 
+            device argument is unused.
+        """
         if type(self.cloud) == np.ndarray:
             self.cloud = torch.from_numpy(self.cloud.astype('float32')).to(self.device)
         if type(self.point_data) == laspy.LasData:
@@ -1744,7 +1801,13 @@ def process_entire_pointcloud(combined_cloud: Ecomodel):
     cylinders_line_plotting(cylinder, scale_factor=1,file_name="test_plot",base_fig=base_plot)
     
 def ecomodel_tile(tile_file_path, results_folder):
+    """
+    Function which performs ecomodel processing on a single tile, given its path and an output folder.
 
+    Args:
+        tile_file_path: Path to tile, including file extension
+        results_folder: path to folder where results will appear (output cylinder file,)
+    """
     combined_cloud = Ecomodel(results_folder)
     basename = os.path.basename(tile_file_path)
 
