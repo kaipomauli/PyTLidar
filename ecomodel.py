@@ -82,7 +82,7 @@ class Ecomodel:
 
     def add_tile(self, tile):
         """
-        Adds a tile to the 
+        Updates min/max values a stores a new tile in self._raw_tiles. 
         """
         self.min_x = min(self.min_x, tile.min_x)
         self.min_y = min(self.min_y, tile.min_y)
